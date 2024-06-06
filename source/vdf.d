@@ -21,18 +21,16 @@ enum CHAR_BACKSLASH = '\\';
 
 enum FMT_UNKNOWN_CHAR = "Encountered Unknown Character %c (%li)\n";
 
-
-enum vdf_data_type
-{
-    NONE,
-    ARRAY,
-    STRING,
-    INT
-}
-
-union vdf_data {
+union VDFData {
+	enum Type
+	{
+	    none,
+	    array,
+	    string,
+	    integer
+	}
     static struct DataArray {
-        vdf_object** data_value;
+        VDFObject** data_value;
         size_t len;
     }
     DataArray data_array;
@@ -42,13 +40,13 @@ union vdf_data {
     long data_int;
 }
 
-struct vdf_object
+struct VDFObject
 {
     const(char)[] key;
-    private vdf_object* parent;
+    private VDFObject* parent;
 
-    vdf_data_type type;
-    vdf_data data;
+    VDFData.Type type;
+    VDFData data;
 
     const(char)[] conditional;
 }
@@ -144,17 +142,17 @@ unittest {
 	runTest("some kinda \"quotes\"", `some kinda \"quotes\"`);
 }
 
-vdf_object vdf_parse_buffer(const(char)[] buffer)
+VDFObject vdf_parse_buffer(const(char)[] buffer)
 {
     assert(buffer, "No input");
 
-    vdf_object root_object;
+    VDFObject root_object;
     root_object.key = null;
     root_object.parent = null;
-    root_object.type = vdf_data_type.NONE;
+    root_object.type = VDFData.Type.none;
     root_object.conditional = null;
 
-    vdf_object* o = &root_object;
+    VDFObject* o = &root_object;
 
     const(char)[] tail = buffer;
 
@@ -189,21 +187,21 @@ vdf_object vdf_parse_buffer(const(char)[] buffer)
 
                     if (len && digits == len)
                     {
-                        o.type = vdf_data_type.INT;
+                        o.type = VDFData.Type.integer;
                     }
                     else
                     {
-                        o.type = vdf_data_type.STRING;
+                        o.type = VDFData.Type.string;
                     }
 
                     switch (o.type)
                     {
-                        case vdf_data_type.INT:
+                        case VDFData.Type.integer:
                         	auto tmpbuf = buf;
                             o.data.data_int = parse!long(tmpbuf, 10);
                             break;
 
-                        case vdf_data_type.STRING:
+                        case VDFData.Type.string:
                             o.data.data_string = local_strndup_escape(buf[0 .. len]);
                             break;
 
@@ -214,19 +212,19 @@ vdf_object vdf_parse_buffer(const(char)[] buffer)
 
                     buf = null;
 
-                    if (o.parent && o.parent.type == vdf_data_type.ARRAY)
+                    if (o.parent && o.parent.type == VDFData.Type.array)
                     {
                         o = o.parent;
-                        assert(o.type == vdf_data_type.ARRAY);
+                        assert(o.type == VDFData.Type.array);
 
                         o.data.data_array.len++;
-                        o.data.data_array.data_value = cast(vdf_object**)realloc(o.data.data_array.data_value, ((void*).sizeof) * (o.data.data_array.len + 1));
-                        o.data.data_array.data_value[o.data.data_array.len] = new vdf_object;
+                        o.data.data_array.data_value = cast(VDFObject**)realloc(o.data.data_array.data_value, ((void*).sizeof) * (o.data.data_array.len + 1));
+                        o.data.data_array.data_value[o.data.data_array.len] = new VDFObject;
                         o.data.data_array.data_value[o.data.data_array.len].parent = o;
 
                         o = o.data.data_array.data_value[o.data.data_array.len];
                         o.key = null;
-                        o.type = vdf_data_type.NONE;
+                        o.type = VDFData.Type.none;
                         o.conditional = null;
                     }
                 }
@@ -240,20 +238,20 @@ vdf_object vdf_parse_buffer(const(char)[] buffer)
 
             case CHAR_OPEN_CURLY_BRACKET:
                 assert(!buf);
-                assert(o.type == vdf_data_type.NONE);
+                assert(o.type == VDFData.Type.none);
 
-                if (o.parent && o.parent.type == vdf_data_type.ARRAY)
+                if (o.parent && o.parent.type == VDFData.Type.array)
                     o.parent.data.data_array.len++;
 
-                o.type = vdf_data_type.ARRAY;
+                o.type = VDFData.Type.array;
                 o.data.data_array.len = 0;
-                o.data.data_array.data_value = cast(vdf_object**)malloc(((void*).sizeof) * (o.data.data_array.len + 1));
-                o.data.data_array.data_value[o.data.data_array.len] = new vdf_object;
+                o.data.data_array.data_value = cast(VDFObject**)malloc(((void*).sizeof) * (o.data.data_array.len + 1));
+                o.data.data_array.data_value[o.data.data_array.len] = new VDFObject;
                 o.data.data_array.data_value[o.data.data_array.len].parent = o;
 
                 o = o.data.data_array.data_value[o.data.data_array.len];
                 o.key = null;
-                o.type = vdf_data_type.NONE;
+                o.type = VDFData.Type.none;
                 o.conditional = null;
                 break;
 
@@ -265,15 +263,15 @@ vdf_object vdf_parse_buffer(const(char)[] buffer)
                 if (o.parent)
                 {
                     o = o.parent;
-                    assert(o.type == vdf_data_type.ARRAY);
+                    assert(o.type == VDFData.Type.array);
 
-                    o.data.data_array.data_value = cast(vdf_object**)realloc(o.data.data_array.data_value, ((void*).sizeof) * (o.data.data_array.len + 1));
-                    o.data.data_array.data_value[o.data.data_array.len] = new vdf_object;
+                    o.data.data_array.data_value = cast(VDFObject**)realloc(o.data.data_array.data_value, ((void*).sizeof) * (o.data.data_array.len + 1));
+                    o.data.data_array.data_value[o.data.data_array.len] = new VDFObject;
                     o.data.data_array.data_value[o.data.data_array.len].parent = o;
 
                     o = o.data.data_array.data_value[o.data.data_array.len];
                     o.key = null;
-                    o.type = vdf_data_type.NONE;
+                    o.type = VDFData.Type.none;
                     o.conditional = null;
                 }
 
@@ -289,7 +287,7 @@ vdf_object vdf_parse_buffer(const(char)[] buffer)
             case CHAR_OPEN_ANGLED_BRACKET:
                 if (!buf)
                 {
-                    vdf_object* prev = o.parent.data.data_array.data_value[o.parent.data.data_array.len-1];
+                    VDFObject* prev = o.parent.data.data_array.data_value[o.parent.data.data_array.len-1];
                     assert(!prev.conditional);
 
                     buf = tail[1 .. $];
@@ -318,58 +316,58 @@ vdf_object vdf_parse_buffer(const(char)[] buffer)
     return root_object;
 }
 
-vdf_object vdf_parse_file(const(char)[] path)
+VDFObject vdf_parse_file(const(char)[] path)
 {
     return vdf_parse_buffer(readText(path));
 }
 
 
-size_t vdf_object_get_array_length(const(vdf_object)* o)
+size_t vdf_object_get_array_length(const(VDFObject)* o)
 {
     assert(o);
-    assert(o.type == vdf_data_type.ARRAY);
+    assert(o.type == VDFData.Type.array);
 
     return o.data.data_array.len;
 }
 
-const(vdf_object)* vdf_object_index_array(const(vdf_object)* o, const size_t index)
+const(VDFObject)* vdf_object_index_array(const(VDFObject)* o, const size_t index)
 {
     assert(o);
-    assert(o.type == vdf_data_type.ARRAY);
+    assert(o.type == VDFData.Type.array);
     assert(o.data.data_array.len > index);
 
     return o.data.data_array.data_value[index];
 }
 
-const(vdf_object)* vdf_object_index_array_str(const(vdf_object)* o, const(char)[] str)
+const(VDFObject)* vdf_object_index_array_str(const(VDFObject)* o, const(char)[] str)
 {
-    if (!o || !str || o.type != vdf_data_type.ARRAY)
+    if (!o || !str || o.type != VDFData.Type.array)
         return null;
 
     for (size_t i = 0; i < o.data.data_array.len; ++i)
     {
-        const(vdf_object)* k = o.data.data_array.data_value[i];
+        const(VDFObject)* k = o.data.data_array.data_value[i];
         if (k.key == str)
             return k;
     }
     return null;
 }
 
-const(char)[] vdf_object_get_string(const(vdf_object)* o)
+const(char)[] vdf_object_get_string(const(VDFObject)* o)
 {
-    assert(o.type == vdf_data_type.STRING);
+    assert(o.type == VDFData.Type.string);
 
     return o.data.data_string;
 }
 
-long vdf_object_get_int(const(vdf_object)* o)
+long vdf_object_get_int(const(VDFObject)* o)
 {
-    assert(o.type == vdf_data_type.INT);
+    assert(o.type == VDFData.Type.integer);
 
     return o.data.data_int;
 }
 
-private void vdf_print_object_indent(const(vdf_object) o, const int l, void delegate(const char[]) @safe print)
+private void vdf_print_object_indent(const(VDFObject) o, const int l, void delegate(const char[]) @safe print)
 {
     const(char)[] spacing = "\t";
 
@@ -382,7 +380,7 @@ private void vdf_print_object_indent(const(vdf_object) o, const int l, void dele
 
     switch (o.type)
     {
-        case vdf_data_type.ARRAY:
+        case VDFData.Type.array:
             print("\n");
             for (int k = 0; k < l; ++k)
                 print(spacing);
@@ -395,18 +393,18 @@ private void vdf_print_object_indent(const(vdf_object) o, const int l, void dele
             print("}");
             break;
 
-        case vdf_data_type.INT:
+        case VDFData.Type.integer:
             print.formattedWrite!"\t\t\"%d\""(o.data.data_int);
             break;
 
-        case vdf_data_type.STRING:
+        case VDFData.Type.string:
             print("\t\t\"");
             print_escaped(o.data.data_string, print);
             print("\"");
             break;
 
         default:
-        case vdf_data_type.NONE:
+        case VDFData.Type.none:
             assert(0);
             break;
     }
@@ -417,19 +415,19 @@ private void vdf_print_object_indent(const(vdf_object) o, const int l, void dele
     print("\n");
 }
 
-void vdf_print_object(vdf_object o, void delegate(const char[]) @safe print = (str) { write(str); })
+void vdf_print_object(VDFObject o, void delegate(const char[]) @safe print = (str) { write(str); })
 {
     vdf_print_object_indent(o, 0, print);
 }
 
-void vdf_free_object(vdf_object* o)
+void vdf_free_object(VDFObject* o)
 {
     if (!o)
         return;
 
     switch (o.type)
     {
-        case vdf_data_type.ARRAY:
+        case VDFData.Type.array:
             for (size_t i = 0; i <= o.data.data_array.len; ++i)
             {
                 vdf_free_object(o.data.data_array.data_value[i]);
@@ -438,11 +436,11 @@ void vdf_free_object(vdf_object* o)
             break;
 
 
-        case vdf_data_type.STRING:
+        case VDFData.Type.string:
             break;
 
         default:
-        case vdf_data_type.NONE:
+        case VDFData.Type.none:
             break;
 
     }
