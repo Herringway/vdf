@@ -1,0 +1,12 @@
+{
+	"authors": [
+		"Herringway"
+	],
+	"copyright": "Copyright © 2024, Herringway",
+	"description": "VDF reparser",
+	"license": "MIT",
+	"name": "reparse",
+	"dependencies": {
+		"vdf": "*"
+	}
+}

@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/vdf
+vdf.so
+vdf.dylib
+vdf.dll
+vdf.a
+vdf.lib
+vdf-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
