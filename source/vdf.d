@@ -19,8 +19,6 @@ enum CHAR_CLOSED_ANGLED_BRACKET = ']';
 enum CHAR_FRONTSLASH = '/';
 enum CHAR_BACKSLASH = '\\';
 
-enum FMT_UNKNOWN_CHAR = "Encountered Unknown Character %c (%li)\n";
-
 union VDFData {
 	enum Type
 	{
@@ -47,8 +45,97 @@ struct VDFObject
 
     VDFData.Type type;
     VDFData data;
-
     const(char)[] conditional;
+
+	size_t get_array_length() const
+	    in(type == VDFData.Type.array)
+	{
+	    return data.data_array.len;
+	}
+	const(VDFObject)* index_array(const size_t index) const
+	    in(type == VDFData.Type.array)
+	    in(data.data_array.len > index)
+	{
+	    return data.data_array.data_value[index];
+	}
+
+	const(VDFObject)* index_array_str(const(char)[] str) const
+	    in(type == VDFData.Type.array)
+	    in(str != "")
+	{
+	    for (size_t i = 0; i < data.data_array.len; ++i)
+	    {
+	        const(VDFObject)* k = data.data_array.data_value[i];
+	        if (k.key == str)
+	            return k;
+	    }
+	    return null;
+	}
+
+	const(char)[] get_string()
+	    in(type == VDFData.Type.string)
+	{
+	    return data.data_string;
+	}
+
+	long get_int()
+	    in(type == VDFData.Type.integer)
+	{
+	    return data.data_int;
+	}
+
+	private void print_indent(const int l, void delegate(const char[]) @safe print) const
+	{
+	    const(char)[] spacing = "\t";
+
+	    for (int k = 0; k < l; ++k)
+	        print(spacing);
+
+	    print("\"");
+	    print_escaped(key, print);
+	    print("\"");
+
+	    switch (type)
+	    {
+	        case VDFData.Type.array:
+	            print("\n");
+	            for (int k = 0; k < l; ++k)
+	                print(spacing);
+	            print("{\n");
+	            for (size_t i = 0; i < data.data_array.len; ++i)
+	                data.data_array.data_value[i].print_indent(l+1, print);
+
+	            for (int k = 0; k < l; ++k)
+	                print(spacing);
+	            print("}");
+	            break;
+
+	        case VDFData.Type.integer:
+	            print.formattedWrite!"\t\t\"%d\""(data.data_int);
+	            break;
+
+	        case VDFData.Type.string:
+	            print("\t\t\"");
+	            print_escaped(data.data_string, print);
+	            print("\"");
+	            break;
+
+	        default:
+	        case VDFData.Type.none:
+	            assert(0);
+	            break;
+	    }
+
+	    if (conditional)
+	        print.formattedWrite!"\t\t[%s]"(conditional.fromStringz);
+
+	    print("\n");
+	}
+
+	void print(void delegate(const char[]) @safe print) const
+	{
+	    print_indent(0, print);
+	}
 }
 
 private const(char)[] local_strndup_escape(const(char)[] s)
@@ -321,105 +408,6 @@ VDFObject vdf_parse_file(const(char)[] path)
     return vdf_parse_buffer(readText(path));
 }
 
-
-size_t vdf_object_get_array_length(const(VDFObject)* o)
-{
-    assert(o);
-    assert(o.type == VDFData.Type.array);
-
-    return o.data.data_array.len;
-}
-
-const(VDFObject)* vdf_object_index_array(const(VDFObject)* o, const size_t index)
-{
-    assert(o);
-    assert(o.type == VDFData.Type.array);
-    assert(o.data.data_array.len > index);
-
-    return o.data.data_array.data_value[index];
-}
-
-const(VDFObject)* vdf_object_index_array_str(const(VDFObject)* o, const(char)[] str)
-{
-    if (!o || !str || o.type != VDFData.Type.array)
-        return null;
-
-    for (size_t i = 0; i < o.data.data_array.len; ++i)
-    {
-        const(VDFObject)* k = o.data.data_array.data_value[i];
-        if (k.key == str)
-            return k;
-    }
-    return null;
-}
-
-const(char)[] vdf_object_get_string(const(VDFObject)* o)
-{
-    assert(o.type == VDFData.Type.string);
-
-    return o.data.data_string;
-}
-
-long vdf_object_get_int(const(VDFObject)* o)
-{
-    assert(o.type == VDFData.Type.integer);
-
-    return o.data.data_int;
-}
-
-private void vdf_print_object_indent(const(VDFObject) o, const int l, void delegate(const char[]) @safe print)
-{
-    const(char)[] spacing = "\t";
-
-    for (int k = 0; k < l; ++k)
-        print(spacing);
-
-    print("\"");
-    print_escaped(o.key, print);
-    print("\"");
-
-    switch (o.type)
-    {
-        case VDFData.Type.array:
-            print("\n");
-            for (int k = 0; k < l; ++k)
-                print(spacing);
-            print("{\n");
-            for (size_t i = 0; i < o.data.data_array.len; ++i)
-                vdf_print_object_indent(*o.data.data_array.data_value[i], l+1, print);
-
-            for (int k = 0; k < l; ++k)
-                print(spacing);
-            print("}");
-            break;
-
-        case VDFData.Type.integer:
-            print.formattedWrite!"\t\t\"%d\""(o.data.data_int);
-            break;
-
-        case VDFData.Type.string:
-            print("\t\t\"");
-            print_escaped(o.data.data_string, print);
-            print("\"");
-            break;
-
-        default:
-        case VDFData.Type.none:
-            assert(0);
-            break;
-    }
-
-    if (o.conditional)
-        print.formattedWrite!"\t\t[%s]"(o.conditional.fromStringz);
-
-    print("\n");
-}
-
-void vdf_print_object(VDFObject o, void delegate(const char[]) @safe print = (str) { write(str); })
-{
-    vdf_print_object_indent(o, 0, print);
-}
-
 void vdf_free_object(VDFObject* o)
 {
     if (!o)
@@ -453,6 +441,6 @@ unittest {
 	Appender!(char[]) sink;
 	immutable sample = import("registry.vdf");
 	auto obj = vdf_parse_buffer(sample);
-	vdf_print_object_indent(obj, 0, (str) { sink ~= str; });
+	obj.print((str) { sink ~= str; });
 	assert(strip(sink.data) == strip(sample));
 }

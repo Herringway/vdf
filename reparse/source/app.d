@@ -15,6 +15,6 @@ int main(string[] args)
         output = File(args[2], "w");
     }
 
-    vdf_print_object(vdf_parse_file(args[1]), (str) { output.write(str); });
+    vdf_parse_file(args[1]).print((str) { output.write(str); });
     return 0;
 }
