@@ -1,3 +1,4 @@
+module vdf;
 import core.stdc.stdlib;
 
 import std.algorithm.mutation;
@@ -52,14 +53,14 @@ struct VDFObject
 	{
 	    return data.data_array.len;
 	}
-	const(VDFObject)* index_array(const size_t index) const
+	const(VDFObject)* opIndex(size_t index) const
 	    in(type == VDFData.Type.array)
 	    in(data.data_array.len > index)
 	{
 	    return data.data_array.data_value[index];
 	}
 
-	const(VDFObject)* index_array_str(const(char)[] str) const
+	const(VDFObject)* opIndex(const(char)[] str) const
 	    in(type == VDFData.Type.array)
 	    in(str != "")
 	{
@@ -69,7 +70,7 @@ struct VDFObject
 	        if (k.key == str)
 	            return k;
 	    }
-	    return null;
+	    assert(0, "Key not found");
 	}
 
 	const(char)[] get_string()
