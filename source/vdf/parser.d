@@ -7,6 +7,7 @@ import std.exception;
 import std.format;
 import std.range;
 import std.sumtype;
+import std.typecons;
 
 import vdf.common;
 import vdf.tokenizer;
@@ -14,6 +15,7 @@ import vdf.tokenizer;
 struct Node {
 	private alias Payload = SumType!(const(char)[], Node[]);
 	private Payload payload;
+	private size_t iterationIndex;
 	const(char)[] key;
 	const(char)[] conditional;
 	Mark start;
@@ -121,6 +123,18 @@ struct Node {
 	}
 	void toString(W)(W writer, size_t indentLevel = 0) const @safe pure if (isPureOutputRange!W && isSafeOutputRange!W) {
 		mixin(toStringBody);
+	}
+	inout(Node) save() inout @safe pure {
+		return this;
+	}
+	auto front() const @safe pure {
+		return tuple!("key", "node")(array[iterationIndex].key, array[iterationIndex]);
+	}
+	void popFront() @safe pure {
+		iterationIndex++;
+	}
+	bool empty() const @safe pure {
+		return iterationIndex >= length;
 	}
 }
 private const(char)[] unescape(scope const(char)[] input) @safe pure {
@@ -321,5 +335,16 @@ Node parseVDF(const char[] data) @safe pure {
 	with(parseVDF(`"empty"  ]`).collectException!VDFParserException.start) {
 		assert(line == 1);
 		assert(column == 10);
+	}
+	{
+		string[string] arr;
+		foreach (key, node; parseVDF(`"empty" {}`)) {
+			arr[key] = node.str.idup;
+		}
+		assert(arr == null);
+		foreach (key, node; parseVDF(`"keys" { "a" "b" "c" "d"}`)) {
+			arr[key] = node.str.idup;
+		}
+		assert(arr == ["a": "b", "c": "d"]);
 	}
 }
