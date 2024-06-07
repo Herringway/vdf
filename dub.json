@@ -1,11 +1,10 @@
 {
 	"authors": [
-		"Herringway",
-		"Jan Drögehoff"
+		"Herringway"
 	],
-	"copyright": "Copyright © 2024, Herringway, Jan Drögehoff",
+	"copyright": "Copyright © 2024, Herringway",
 	"description": "VDF parser",
-	"license": "MIT",
+	"license": "BSL-1.0",
 	"name": "vdf",
 	"stringImportPaths": [ "samples" ],
 	"subPackages": [ "reparse" ]

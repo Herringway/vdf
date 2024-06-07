@@ -1,0 +1,9 @@
+"someresource" [$WIN]
+{
+	"foo" "bar" // Some comment
+	"odd" "record" [$ODD]
+	"someotherresource"
+	{
+		"baz" "tar"
+	}
+}
