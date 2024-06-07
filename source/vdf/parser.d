@@ -127,8 +127,8 @@ struct Node {
 	inout(Node) save() inout @safe pure {
 		return this;
 	}
-	auto front() const @safe pure {
-		return tuple!("key", "node")(array[iterationIndex].key, array[iterationIndex]);
+	auto front() inout @safe pure {
+		return tuple!("key", "node")(cast(const(char)[])array[iterationIndex].key, cast()array[iterationIndex]);
 	}
 	void popFront() @safe pure {
 		iterationIndex++;
@@ -342,8 +342,18 @@ Node parseVDF(const char[] data) @safe pure {
 			arr[key] = node.str.idup;
 		}
 		assert(arr == null);
-		foreach (key, node; parseVDF(`"keys" { "a" "b" "c" "d"}`)) {
+		foreach (key, node; parseVDF(`"keys" { "a" "b" "c" "d" }`)) {
 			arr[key] = node.str.idup;
+		}
+		assert(arr == ["a": "b", "c": "d"]);
+	}
+	{
+		string[string] arr;
+		assert(arr == null);
+		foreach (key, node; parseVDF(`"keys" { "subkey" { "a" "b" "c" "d" } }`)) {
+			foreach (subkey, subnode; node) {
+				arr[subkey] = subnode.str.idup;
+			}
 		}
 		assert(arr == ["a": "b", "c": "d"]);
 	}
